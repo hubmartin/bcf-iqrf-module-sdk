@@ -17,6 +17,33 @@ void button_event_handler(bc_button_t *self, bc_button_event_t event, void *even
     bc_log_info("Button event handler - event: %i", event);
 }
 
+void iqrf_event_handler(bc_module_iqrf_t *self, bc_module_iqrf_event_t event, void *param)
+{
+    switch(event)
+    {
+        case BC_MODULE_IQRF_EVENT_PERIPHERAL_REQUEST:
+            bc_log_debug("BC_MODULE_IQRF_EVENT_PERIPHERAL_REQUEST");
+            break;
+
+        case BC_MODULE_IQRF_EVENT_PERIPHERAL_INFO_REQUEST:
+            bc_log_debug("BC_MODULE_IQRF_EVENT_PERIPHERAL_INFO_REQUEST");
+            break;
+
+        case BC_MODULE_IQRF_EVENT_PCMD_STD_ENUMERATE:
+            bc_log_debug("BC_MODULE_IQRF_EVENT_PCMD_STD_ENUMERATE");
+            break;
+
+        case BC_MODULE_IQRF_EVENT_PCMD_STD_SENSORS_READ_VALUES:
+        case BC_MODULE_IQRF_EVENT_PCMD_STD_SENSORS_READ_TYPES_AND_VALUES:
+            bc_log_debug("BC_MODULE_IQRF_EVENT_PCMD_STD_SENSORS_READ_VALUES");
+            break;
+
+        default:
+            break;
+    }
+}
+
+
 void application_init(void)
 {
     // Initialize logging
@@ -31,6 +58,7 @@ void application_init(void)
     bc_button_set_event_handler(&button, button_event_handler, NULL);
 
     bc_module_iqrf_init();
+    bc_module_iqrf_set_event_handler(iqrf_event_handler, NULL);
 
 }
 
