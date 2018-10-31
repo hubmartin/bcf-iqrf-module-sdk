@@ -19,23 +19,89 @@ void button_event_handler(bc_button_t *self, bc_button_event_t event, void *even
 
 void iqrf_event_handler(bc_module_iqrf_t *self, bc_module_iqrf_event_t event, void *param)
 {
+    uint8_t *pResponseData = self->dpa_message->Response.PData;
+
     switch(event)
     {
         case BC_MODULE_IQRF_EVENT_PERIPHERAL_REQUEST:
             bc_log_debug("BC_MODULE_IQRF_EVENT_PERIPHERAL_REQUEST");
+            // We implement 1 user peripheral
+            self->dpa_message->EnumPeripheralsAnswer.UserPerNr = 1;
+            FlagUserPer( self->dpa_message->EnumPeripheralsAnswer.UserPer, PNUM_STD_SENSORS );
+            self->dpa_message->EnumPeripheralsAnswer.HWPID = HWPID_HARDWARIO_PRESENSCE_SENSOR;
+            self->dpa_message->EnumPeripheralsAnswer.HWPIDver = 0xABCD;
+
+            // Return the enumeration structure but do not modify _DpaDataLength
+            self->return_data_length = sizeof( self->dpa_message->EnumPeripheralsAnswer );
+            // Return TRUE
+            self->return_flags = EVENT_RETURN_TRUE;
             break;
 
         case BC_MODULE_IQRF_EVENT_PERIPHERAL_INFO_REQUEST:
             bc_log_debug("BC_MODULE_IQRF_EVENT_PERIPHERAL_INFO_REQUEST");
+            self->dpa_message->PeripheralInfoAnswer.PerT = PERIPHERAL_TYPE_STD_SENSORS;
+            self->dpa_message->PeripheralInfoAnswer.PerTE = PERIPHERAL_TYPE_EXTENDED_READ_WRITE;
+            // Set standard version
+            self->dpa_message->PeripheralInfoAnswer.Par1 = 13;
+
+            // Return the information structure but do not modify _DpaDataLength
+            self->return_data_length = sizeof( self->dpa_message->PeripheralInfoAnswer );
+            // Return TRUE
+            self->return_flags = EVENT_RETURN_TRUE;
             break;
 
         case BC_MODULE_IQRF_EVENT_PCMD_STD_ENUMERATE:
             bc_log_debug("BC_MODULE_IQRF_EVENT_PCMD_STD_ENUMERATE");
+            // 1st byte is sensor type
+            self->dpa_message->Response.PData[0] = STD_SENSOR_TYPE_BINARYDATA30; //STD_SENSOR_TYPE_BINARYDATA7;
+            // Return just one sensor type
+            self->return_data_length = *self->dpa_data_length = sizeof( self->dpa_message->Response.PData[0] );
+            // Return TRUE
+            self->return_flags = EVENT_RETURN_TRUE;
             break;
 
         case BC_MODULE_IQRF_EVENT_PCMD_STD_SENSORS_READ_VALUES:
-        case BC_MODULE_IQRF_EVENT_PCMD_STD_SENSORS_READ_TYPES_AND_VALUES:
             bc_log_debug("BC_MODULE_IQRF_EVENT_PCMD_STD_SENSORS_READ_VALUES");
+            // Is my only sensor selected?
+            if ( ( self->dpa_message->Request.PData[0] & 0x01 ) != 0 )
+            {
+                uint32_t val = 1234;
+
+                // Return sensor data
+                *pResponseData++ = (val >> 0) & 0xFF;
+                *pResponseData++ = (val >> 8) & 0xFF;
+                *pResponseData++ = (val >> 16) & 0xFF;
+                *pResponseData++ = (val >> 24) & 0xFF;
+            }
+            // Returned data length
+            self->return_data_length = *self->dpa_data_length = ( pResponseData - self->dpa_message->Response.PData );
+            // Return TRUE
+            self->return_flags = EVENT_RETURN_TRUE;
+            break;
+
+        case BC_MODULE_IQRF_EVENT_PCMD_STD_SENSORS_READ_TYPES_AND_VALUES:
+            bc_log_debug("BC_MODULE_IQRF_EVENT_PCMD_STD_SENSORS_READ_TYPES_AND_VALUES");
+            // Pointer to the response data
+            //uint8_t *pResponseData2 = self->dpa_message->Response.PData;
+            // Is my only sensor selected?
+            if ( ( self->dpa_message->Request.PData[0] & 0x01 ) != 0 )
+            {
+                // Return also sensor type?
+                *pResponseData++ = STD_SENSOR_TYPE_BINARYDATA30;
+
+                uint32_t val = 1234;
+
+                // Return sensor data
+                *pResponseData++ = (val >> 0) & 0xFF;
+                *pResponseData++ = (val >> 8) & 0xFF;
+                *pResponseData++ = (val >> 16) & 0xFF;
+                *pResponseData++ = (val >> 24) & 0xFF;
+            }
+
+            // Returned data length
+            self->return_data_length = *self->dpa_data_length = ( pResponseData - self->dpa_message->Response.PData );
+            // Return TRUE
+            self->return_flags = EVENT_RETURN_TRUE;
             break;
 
         default:
